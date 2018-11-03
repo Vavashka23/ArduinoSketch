@@ -62,6 +62,7 @@ void sleep()         // Функция ввода ардуины в спящий
   } else {
     Serial.println("DAY");
     night = false;
+    digitalWrite(MOTION_VCC, LOW);
     sleep();
   }
 }
@@ -79,15 +80,12 @@ void loop()
   {
     if(motion)
     {
-      Serial.println("shining");
-      delay(10000);
+      shining();
       motion = false;
-      digitalWrite(MOTION_VCC, LOW);
     } else {
-    
+      sleep();
     }
   } else {
-    Serial.println("Sleeeeping, DAY");
     sleep();
   }
   sleep();     // Вызов функции sleep() для засыпания

@@ -1,20 +1,24 @@
 #define LIGHT_PIN 3
 #define LIGHT_VCC 5
-#define MOTION_PIN 7
+#define MOTION_PIN 2
 #define MOTION_VCC 8
 #define LED 9
-
-#define analogPIN 1
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
 
-volatile int sleepStatus = 0;             // Переменная для хранения статуса (спим, проснулись)
+volatile bool night = false;             // Переменная для хранения времени суток (0-день, 1-ночь)
+volatile bool motion = false;            // 1 - есть движение
+
+void wakeUpMotion()        // Прерывание сработает после пробуждения
+{
+  sleep_disable();     // Выключаем спящий режим
+  motion = 1;
+}
 
 void wakeUp()        // Прерывание сработает после пробуждения
 {
   sleep_disable();     // Выключаем спящий режим
-  //detachInterrupt(1);
 }
 
 void setup()
@@ -25,16 +29,14 @@ void setup()
   pinMode(LIGHT_PIN, INPUT);
   pinMode(LED, OUTPUT);
   set_sleep_mode(SLEEP_MODE_PWR_SAVE);   // Устанавливаем режим сна
-  /*for(int i = 0; i<5; i++) {
+  for(int i = 0; i<5; i++) {
     digitalWrite(LED, HIGH);
-    delay(1500);
+    delay(1200);
     digitalWrite(LED, LOW);
-    delay(700);
+    delay(600);
   }
-  digitalWrite(LED, HIGH);*/
   digitalWrite(LIGHT_VCC, HIGH);
   digitalWrite(LIGHT_PIN, LOW);
-  attachInterrupt(1, wakeUp, RISING);
   Serial.begin(9600);
 
   
@@ -43,61 +45,50 @@ void setup()
 void sleep()         // Функция ввода ардуины в спящий режим
 {
   Serial.println("sleepEnter");
-  delay(100);
-  //set_sleep_mode(SLEEP_MODE_PWR_SAVE);   // Устанавливаем режим сна
-  //digitalWrite(MOTION_VCC, LOW);
-  //digitalWrite(LED, LOW);             // Выключаем светодиодов
-  //attachInterrupt(1,wakeUp, HIGH);     // Используем прерывание для выполнения функции wakeUp при появлении HIGH уровня
-  //delay(100);
+  delay(100);  
+  attachInterrupt(1, wakeUp, CHANGE);
+  attachInterrupt(0, wakeUpMotion, CHANGE);      // Используем прерывание для выполнения функции wakeUp при появлении HIGH уровня
   sleep_enable();                        // Включаем sleep-бит в регистре mcucr. Теперь возможен сон
-  sleepStatus = 1;                       // В переменную заносим статус сна
   sleep_mode();                          // Здесь устройство перейдет в режим сна
-  Serial.println("kaka");
-  delay(100);
-  shining();
-  //sleep_disable();
-  //detachInterrupt(1);
+
+  detachInterrupt(0);
+  detachInterrupt(1);
+  
+  if(digitalRead(LIGHT_PIN) == HIGH) 
+  {
+    Serial.println("NIGHT");
+    night = true;
+    digitalWrite(MOTION_VCC, HIGH);
+  } else {
+    Serial.println("DAY");
+    night = false;
+    sleep();
+  }
 }
 
 void shining()
 {
-              // В переменную заносим статус бодрствования
-  Serial.println("shinning");
-  delay(1000);
-  /*digitalWrite(LED, HIGH);
+  digitalWrite(LED, HIGH);
   delay(10000);
-  digitalWrite(LED, LOW);*/
+  digitalWrite(LED, LOW);
 }
 
 void loop()
 {
-  Serial.println(analogRead(analogPIN)*0.0049);
-  Serial.println(sleepStatus);
-  if (sleepStatus)
+  if(night) 
   {
-    Serial.println("sleepStatus");
-    sleepStatus = 0; 
-    delay(1000);
-  } else 
-  {
-    Serial.println("lol");
-    sleep();     // Вызов функции sleep() для засыпания
-  }
-  Serial.println("loop");
-  delay(10000);
-  //digitalWrite(MOTION_VCC, HIGH);
-  /*digitalWrite(LED, HIGH);
-  delay(5000);
-  digitalWrite(LED, LOW);*/
-  //delay(2000);
-  /*while(true)
-  {
-    if(MOTION_PIN == HIGH)
+    if(motion)
     {
-      shining();
-    } else
-    break;
-  }*/
-  //digitalWrite(MOTION_VCC, LOW);
+      Serial.println("shining");
+      delay(10000);
+      motion = false;
+      digitalWrite(MOTION_VCC, LOW);
+    } else {
+    
+    }
+  } else {
+    Serial.println("Sleeeeping, DAY");
+    sleep();
+  }
   sleep();     // Вызов функции sleep() для засыпания
 }
